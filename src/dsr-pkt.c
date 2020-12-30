@@ -24,13 +24,21 @@ char *dsr_pkt_alloc_opts(struct dsr_pkt *dp, int len)
 		return NULL;
 
 	dp->dh.raw = (char *)MALLOC(len + DEFAULT_TAILROOM, GFP_ATOMIC);
-
+	// 申请一块永不睡眠的空间
 	if (!dp->dh.raw)
 		return NULL;
 
 	dp->dh.tail = dp->dh.raw + len;
 	dp->dh.end = dp->dh.tail + DEFAULT_TAILROOM;
-
+	/**
+	 * ______________________ <- raw 指针
+	 * |  len 长 		    |
+	 * |  的空间			 | 
+	 * |--------------------- <- tail指针
+	 * |  DEFAULT_TAILROOM  |
+	 * |  128 个字节长的空间   |
+	 * |___________________ | <- end 指针
+	 */
 	return dp->dh.raw;
 }
 
@@ -42,7 +50,8 @@ char *dsr_pkt_alloc_opts_expand(struct dsr_pkt *dp, int len)
 	if (!dp || !dp->dh.raw)
 		return NULL;
 
-	if (dsr_pkt_tailroom(dp) > len) {
+	if (dsr_pkt_tailroom(dp) > len)
+	{
 		tmp = dp->dh.tail;
 		dp->dh.tail += len;
 		return tmp;
@@ -84,7 +93,7 @@ int dsr_pkt_free_opts(struct dsr_pkt *dp)
 }
 
 #ifdef NS2
-struct dsr_pkt *dsr_pkt_alloc(Packet * p)
+struct dsr_pkt *dsr_pkt_alloc(Packet *p)
 {
 	struct dsr_pkt *dp;
 	struct hdr_cmn *cmh;
@@ -97,7 +106,8 @@ struct dsr_pkt *dsr_pkt_alloc(Packet * p)
 
 	memset(dp, 0, sizeof(struct dsr_pkt));
 
-	if (p) {
+	if (p)
+	{
 		cmh = hdr_cmn::access(p);
 
 		dp->p = p;
@@ -105,18 +115,20 @@ struct dsr_pkt *dsr_pkt_alloc(Packet * p)
 		dp->nh.iph = HDR_IP(p);
 
 		dp->src.s_addr =
-		    Address::instance().get_nodeaddr(dp->nh.iph->saddr());
+			Address::instance().get_nodeaddr(dp->nh.iph->saddr());
 		dp->dst.s_addr =
-		    Address::instance().get_nodeaddr(dp->nh.iph->daddr());
+			Address::instance().get_nodeaddr(dp->nh.iph->daddr());
 
-		if (cmh->ptype() == PT_DSR) {
+		if (cmh->ptype() == PT_DSR)
+		{
 			struct dsr_opt_hdr *opth;
-			
+
 			opth = hdr_dsr::access(p);
 
 			dsr_opts_len = ntohs(opth->p_len) + DSR_OPT_HDR_LEN;
 
-			if (!dsr_pkt_alloc_opts(dp, dsr_opts_len)) {
+			if (!dsr_pkt_alloc_opts(dp, dsr_opts_len))
+			{
 				FREE(dp);
 				return NULL;
 			}
@@ -126,12 +138,13 @@ struct dsr_pkt *dsr_pkt_alloc(Packet * p)
 			dsr_opt_parse(dp);
 
 			if ((DATA_PACKET(dp->dh.opth->nh) ||
-			    dp->dh.opth->nh == PT_PING) && 
+				 dp->dh.opth->nh == PT_PING) &&
 				ConfVal(UseNetworkLayerAck))
 				dp->flags |= PKT_REQUEST_ACK;
-		} else if ((DATA_PACKET(cmh->ptype()) || 
-			    cmh->ptype() == PT_PING) && 
-			   ConfVal(UseNetworkLayerAck))
+		}
+		else if ((DATA_PACKET(cmh->ptype()) ||
+				  cmh->ptype() == PT_PING) &&
+				 ConfVal(UseNetworkLayerAck))
 			dp->flags |= PKT_REQUEST_ACK;
 
 		/* A trick to calculate payload length... */
@@ -154,8 +167,9 @@ struct dsr_pkt *dsr_pkt_alloc(struct sk_buff *skb)
 
 	memset(dp, 0, sizeof(struct dsr_pkt));
 
-	if (skb) {
-	/* 	skb_unlink(skb); */
+	if (skb)
+	{
+		/* 	skb_unlink(skb); */
 
 		dp->skb = skb;
 
@@ -165,30 +179,32 @@ struct dsr_pkt *dsr_pkt_alloc(struct sk_buff *skb)
 		dp->src.s_addr = skb->nh.iph->saddr;
 		dp->dst.s_addr = skb->nh.iph->daddr;
 
-		if (dp->nh.iph->protocol == IPPROTO_DSR) {
+		if (dp->nh.iph->protocol == IPPROTO_DSR)
+		{
 			struct dsr_opt_hdr *opth;
 			int n;
 
 			opth = (struct dsr_opt_hdr *)(dp->nh.raw + (dp->nh.iph->ihl << 2));
 			dsr_opts_len = ntohs(opth->p_len) + DSR_OPT_HDR_LEN;
 
-			if (!dsr_pkt_alloc_opts(dp, dsr_opts_len)) {
+			if (!dsr_pkt_alloc_opts(dp, dsr_opts_len))
+			{
 				FREE(dp);
 				return NULL;
 			}
 
 			memcpy(dp->dh.raw, (char *)opth, dsr_opts_len);
-			
+
 			n = dsr_opt_parse(dp);
-			
+
 			DEBUG("Packet has %d DSR option(s)\n", n);
 		}
 
 		dp->payload = dp->nh.raw +
-		    (dp->nh.iph->ihl << 2) + dsr_opts_len;
+					  (dp->nh.iph->ihl << 2) + dsr_opts_len;
 
 		dp->payload_len = ntohs(dp->nh.iph->tot_len) -
-		    (dp->nh.iph->ihl << 2) - dsr_opts_len;
+						  (dp->nh.iph->ihl << 2) - dsr_opts_len;
 
 		if (dp->payload_len)
 			dp->flags |= PKT_REQUEST_ACK;
