@@ -140,7 +140,7 @@ static inline int timeval_add_usecs(struct timeval *tv, usecs_t usecs)
 
 	if (!tv)
 		return -1;
-
+	// 注意 timeval 结构为类似 tv_sec.tv_usec 的小数形式
 	add = tv->tv_usec + usecs;
 	tv->tv_sec += add / 1000000;
 	tv->tv_usec = add % 1000000;

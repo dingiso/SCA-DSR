@@ -12,7 +12,7 @@
 #include <net/ip.h>
 #include "dsr-dev.h"
 
-#endif				/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
 #ifdef NS2
 #include "ns-agent.h"
@@ -38,13 +38,15 @@ static TBL(grat_rrep_tbl, GRAT_RREP_TBL_MAX_LEN);
 DSRUUTimer grat_rrep_tbl_timer;
 #endif
 
-struct grat_rrep_entry {
+struct grat_rrep_entry
+{
 	list_t l;
 	struct in_addr src, prev_hop;
 	struct timeval expires;
 };
 
-struct grat_rrep_query {
+struct grat_rrep_query
+{
 	struct in_addr *src, *prev_hop;
 };
 
@@ -54,7 +56,7 @@ static inline int crit_query(void *pos, void *query)
 	struct grat_rrep_query *q = (struct grat_rrep_query *)query;
 
 	if (p->src.s_addr == q->src->s_addr &&
-	    p->prev_hop.s_addr == q->prev_hop->s_addr)
+		p->prev_hop.s_addr == q->prev_hop->s_addr)
 		return 1;
 	return 0;
 }
@@ -72,7 +74,7 @@ static inline int crit_time(void *pos, void *time)
 void NSCLASS grat_rrep_tbl_timeout(unsigned long data)
 {
 	struct grat_rrep_entry *e =
-	    (struct grat_rrep_entry *)tbl_detach_first(&grat_rrep_tbl);
+		(struct grat_rrep_entry *)tbl_detach_first(&grat_rrep_tbl);
 
 	FREE(e);
 
@@ -92,14 +94,14 @@ void NSCLASS grat_rrep_tbl_timeout(unsigned long data)
 
 int NSCLASS grat_rrep_tbl_add(struct in_addr src, struct in_addr prev_hop)
 {
-	struct grat_rrep_query q = { &src, &prev_hop };
+	struct grat_rrep_query q = {&src, &prev_hop};
 	struct grat_rrep_entry *e;
 
 	if (in_tbl(&grat_rrep_tbl, &q, crit_query))
 		return 0;
 
 	e = (struct grat_rrep_entry *)MALLOC(sizeof(struct grat_rrep_entry),
-					     GFP_ATOMIC);
+										 GFP_ATOMIC);
 
 	if (!e)
 		return -1;
@@ -114,7 +116,8 @@ int NSCLASS grat_rrep_tbl_add(struct in_addr src, struct in_addr prev_hop)
 	if (timer_pending(&grat_rrep_tbl_timer))
 		del_timer_sync(&grat_rrep_tbl_timer);
 
-	if (tbl_add(&grat_rrep_tbl, &e->l, crit_time)) {
+	if (tbl_add(&grat_rrep_tbl, &e->l, crit_time))
+	{
 
 		DSR_READ_LOCK(&grat_rrep_tbl.lock);
 		e = (struct grat_rrep_entry *)TBL_FIRST(&grat_rrep_tbl);
@@ -128,7 +131,7 @@ int NSCLASS grat_rrep_tbl_add(struct in_addr src, struct in_addr prev_hop)
 
 int NSCLASS grat_rrep_tbl_find(struct in_addr src, struct in_addr prev_hop)
 {
-	struct grat_rrep_query q = { &src, &prev_hop };
+	struct grat_rrep_query q = {&src, &prev_hop};
 
 	if (in_tbl(&grat_rrep_tbl, &q, crit_query))
 		return 1;
@@ -149,13 +152,14 @@ static int grat_rrep_tbl_print(struct tbl *t, char *buf)
 
 	len += sprintf(buf, "# %-15s %-15s Time\n", "Source", "Prev hop");
 
-	list_for_each(pos, &t->head) {
+	list_for_each(pos, &t->head)
+	{
 		struct grat_rrep_entry *e = (struct grat_rrep_entry *)pos;
 
 		len += sprintf(buf + len, "  %-15s %-15s %lu\n",
-			       print_ip(e->src),
-			       print_ip(e->prev_hop),
-			       timeval_diff(&e->expires, &now) / 1000000);
+					   print_ip(e->src),
+					   print_ip(e->prev_hop),
+					   timeval_diff(&e->expires, &now) / 1000000);
 	}
 
 	DSR_READ_UNLOCK(&t->lock);
@@ -179,7 +183,7 @@ grat_rrep_tbl_proc_info(char *buffer, char **start, off_t offset, int length)
 	return len;
 }
 
-#endif				/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
 static inline int
 dsr_rrep_add_srt(struct dsr_rrep_opt *rrep_opt, struct dsr_srt *srt)
@@ -198,7 +202,7 @@ dsr_rrep_add_srt(struct dsr_rrep_opt *rrep_opt, struct dsr_srt *srt)
 }
 
 static struct dsr_rrep_opt *dsr_rrep_opt_add(char *buf, int len,
-					     struct dsr_srt *srt)
+											 struct dsr_srt *srt)
 {
 	struct dsr_rrep_opt *rrep_opt;
 
@@ -223,80 +227,84 @@ int NSCLASS dsr_rrep_send(struct dsr_srt *srt, struct dsr_srt *srt_to_me)
 	struct dsr_pkt *dp = NULL;
 	char *buf;
 	int len, ttl, n;
-
+	// 参数为空 ，返回 -1
 	if (!srt || !srt_to_me)
 		return -1;
 
 	dp = dsr_pkt_alloc(NULL);
 
-	if (!dp) {
+	if (!dp)
+	{
 		DEBUG("Could not allocate DSR packet\n");
 		return -1;
 	}
-
+	// RREP报文地址  我的地址 -> 给我发rreq的地址
 	dp->src = my_addr();
 	dp->dst = srt->dst;
-
+	// 没有中间结点，下一跳为 dst ，否则就是路由表第一项
 	if (srt->laddrs == 0)
 		dp->nxt_hop = dp->dst;
 	else
 		dp->nxt_hop = srt->addrs[0];
 
 	len = DSR_OPT_HDR_LEN + DSR_SRT_OPT_LEN(srt) +
-	    DSR_RREP_OPT_LEN(srt_to_me)/*  + DSR_OPT_PAD1_LEN */;
-
+		  DSR_RREP_OPT_LEN(srt_to_me) /*  + DSR_OPT_PAD1_LEN */;
+	// 获取中间结点个数
 	n = srt->laddrs / sizeof(struct in_addr);
 
 	DEBUG("srt: %s\n", print_srt(srt));
 	DEBUG("srt_to_me: %s\n", print_srt(srt_to_me));
 	DEBUG("next_hop=%s\n", print_ip(dp->nxt_hop));
-	DEBUG
-	    ("IP_HDR_LEN=%d DSR_OPT_HDR_LEN=%d DSR_SRT_OPT_LEN=%d DSR_RREP_OPT_LEN=%d DSR_OPT_PAD1_LEN=%d RREP len=%d\n",
-	     IP_HDR_LEN, DSR_OPT_HDR_LEN, DSR_SRT_OPT_LEN(srt),
-	     DSR_RREP_OPT_LEN(srt_to_me), DSR_OPT_PAD1_LEN, len);
-
+	DEBUG("IP_HDR_LEN=%d DSR_OPT_HDR_LEN=%d DSR_SRT_OPT_LEN=%d DSR_RREP_OPT_LEN=%d DSR_OPT_PAD1_LEN=%d RREP len=%d\n",
+		  IP_HDR_LEN, DSR_OPT_HDR_LEN, DSR_SRT_OPT_LEN(srt),
+		  DSR_RREP_OPT_LEN(srt_to_me), DSR_OPT_PAD1_LEN, len);
+	// 设置 TTL 值，如果按 srt 转发需要 n+1 次，防止报文在节点间错误的转发引起拥塞
 	ttl = n + 1;
 
 	DEBUG("TTL=%d, n=%d\n", ttl, n);
-
+	// 申请 RREP_OPT 空间
 	buf = dsr_pkt_alloc_opts(dp, len);
 
 	if (!buf)
 		goto out_err;
-
+	// 组建 IP 头
 	dp->nh.iph = dsr_build_ip(dp, dp->src, dp->dst, IP_HDR_LEN,
-				  IP_HDR_LEN + len, IPPROTO_DSR, ttl);
+							  IP_HDR_LEN + len, IPPROTO_DSR, ttl);
 
-	if (!dp->nh.iph) {
+	if (!dp->nh.iph)
+	{
 		DEBUG("Could not create IP header\n");
 		goto out_err;
 	}
-
+	// 组件 DSR options 头
 	dp->dh.opth = dsr_opt_hdr_add(buf, len, DSR_NO_NEXT_HDR_TYPE);
 
-	if (!dp->dh.opth) {
+	if (!dp->dh.opth)
+	{
 		DEBUG("Could not create DSR options header\n");
 		goto out_err;
 	}
-
-	buf += DSR_OPT_HDR_LEN;
+	// 进行 路由选项头部的构建
+	buf += DSR_OPT_HDR_LEN; // 移动指针
 	len -= DSR_OPT_HDR_LEN;
 
 	/* Add the source route option to the packet */
 	dp->srt_opt = dsr_srt_opt_add(buf, len, 0, dp->salvage, srt);
 
-	if (!dp->srt_opt) {
+	if (!dp->srt_opt)
+	{
 		DEBUG("Could not create Source Route option header\n");
 		goto out_err;
 	}
-
-	buf += DSR_SRT_OPT_LEN(srt);
+	// 进行 RREP 选项头部的构造
+	buf += DSR_SRT_OPT_LEN(srt); // 移动指针
 	len -= DSR_SRT_OPT_LEN(srt);
 
 	dp->rrep_opt[dp->num_rrep_opts++] =
-	    dsr_rrep_opt_add(buf, len, srt_to_me);
+		dsr_rrep_opt_add(buf, len, srt_to_me);
 
-	if (!dp->rrep_opt[dp->num_rrep_opts - 1]) {
+	if (!dp->rrep_opt[dp->num_rrep_opts - 1])
+	{
 		DEBUG("Could not create RREP option header\n");
 		goto out_err;
 	}
@@ -304,59 +312,61 @@ int NSCLASS dsr_rrep_send(struct dsr_srt *srt, struct dsr_srt *srt_to_me)
 	/* TODO: Should we PAD? The rrep struct is padded and aligned
 	 * automatically by the compiler... How to fix this? */
 
-/* 	buf += DSR_RREP_OPT_LEN(srt_to_me); */
-/* 	len -= DSR_RREP_OPT_LEN(srt_to_me); */
+	/* 	buf += DSR_RREP_OPT_LEN(srt_to_me); */
+	/* 	len -= DSR_RREP_OPT_LEN(srt_to_me); */
 
-/* 	pad1_opt = (struct dsr_pad1_opt *)buf; */
-/* 	pad1_opt->type = DSR_OPT_PAD1; */
+	/* 	pad1_opt = (struct dsr_pad1_opt *)buf; */
+	/* 	pad1_opt->type = DSR_OPT_PAD1; */
 
 	/* if (ConfVal(UseNetworkLayerAck)) */
-/* 		dp->flags |= PKT_REQUEST_ACK; */
+	/* 		dp->flags |= PKT_REQUEST_ACK; */
 
 	dp->flags |= PKT_XMIT_JITTER;
-
+	// 发送报文
 	XMIT(dp);
 
 	return 0;
-      out_err:
+out_err:
 	if (dp)
 		dsr_pkt_free(dp);
 
 	return -1;
 }
-
+// 负责转发和接收 RREP 报文
 int NSCLASS dsr_rrep_opt_recv(struct dsr_pkt *dp, struct dsr_rrep_opt *rrep_opt)
 {
 	struct in_addr myaddr, srt_dst;
 	struct dsr_srt *rrep_opt_srt;
-
+	// 参数为 NULL ，或 已经在混杂模式被接收了 （和 rreq 不同返回 ERROR
 	if (!dp || !rrep_opt || dp->flags & PKT_PROMISC_RECV)
 		return DSR_PKT_ERROR;
-	
+	// rrep_opt 填到 dp 的最后一位 ， 超过限定值返回错误
 	if (dp->num_rrep_opts < MAX_RREP_OPTS)
 		dp->rrep_opt[dp->num_rrep_opts++] = rrep_opt;
 	else
 		return DSR_PKT_ERROR;
 
 	myaddr = my_addr();
-	
+	// 终点是 addrs 的最后一个， DSR_RREP_ADDRS_LEN 返回的是 长度-in_addr ，最后是 addrs[len-1]
 	srt_dst.s_addr = rrep_opt->addrs[DSR_RREP_ADDRS_LEN(rrep_opt) / sizeof(struct in_addr)];
-	
+	// 反相建立路由表项
 	rrep_opt_srt = dsr_srt_new(dp->dst, srt_dst,
-				   DSR_RREP_ADDRS_LEN(rrep_opt),
-				   (char *)rrep_opt->addrs);
+							   DSR_RREP_ADDRS_LEN(rrep_opt),
+							   (char *)rrep_opt->addrs);
 
 	if (!rrep_opt_srt)
 		return DSR_PKT_ERROR;
-
+	// 将路径 设置Timeout 信息 填入路由表中
 	dsr_rtc_add(rrep_opt_srt, ConfValToUsecs(RouteCacheTimeout), 0);
 
 	/* Remove pending RREQs */
+	// 找到路径了，就把 rreq_tbl 中的表项删除
 	rreq_tbl_route_discovery_cancel(rrep_opt_srt->dst);
 
 	FREE(rrep_opt_srt);
-
-	if (dp->dst.s_addr == myaddr.s_addr) {
+	// 如果 RREP dst是自己，就返回，否则由上层函数继续转发出去
+	if (dp->dst.s_addr == myaddr.s_addr)
+	{
 		/*RREP for this node */
 
 		DEBUG("RREP for me!\n");

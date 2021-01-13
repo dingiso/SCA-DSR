@@ -36,13 +36,13 @@ static DSRUUTimer send_buf_timer;
 static int send_buf_print(struct tbl *t, char *buffer);
 #endif
 
-struct send_buf_entry {
+struct send_buf_entry
+{
 	list_t l;
 	struct dsr_pkt *dp;
 	struct timeval qtime;
-	xmit_fct_t okfn;
+	xmit_fct_t okfn; // 发送函数 xmit function
 };
-
 
 static inline int crit_addr(void *pos, void *addr)
 {
@@ -60,7 +60,8 @@ static inline int crit_garbage(void *pos, void *n)
 	struct send_buf_entry *e = (struct send_buf_entry *)pos;
 
 	if (timeval_diff(now, &e->qtime) >=
-	    (int)ConfValToUsecs(SendBufferTimeout)) {
+		(int)ConfValToUsecs(SendBufferTimeout))
+	{
 		if (e->dp)
 			dsr_pkt_free(e->dp);
 		return 1;
@@ -78,12 +79,12 @@ void NSCLASS send_buf_timeout(unsigned long data)
 	struct send_buf_entry *e;
 	int pkts;
 	struct timeval expires, now;
-/* 	char buf[2048]; */
+	/* 	char buf[2048]; */
 
 	gettime(&now);
 
-/* 	send_buf_print(&send_buf, buf); */
-/* 	DEBUG("\n%s\n", buf); */
+	/* 	send_buf_print(&send_buf, buf); */
+	/* 	DEBUG("\n%s\n", buf); */
 
 	pkts = tbl_for_each_del(&send_buf, &now, crit_garbage);
 
@@ -93,7 +94,8 @@ void NSCLASS send_buf_timeout(unsigned long data)
 	/* Get first packet in maintenance buffer */
 	e = (struct send_buf_entry *)__tbl_find(&send_buf, NULL, crit_none);
 
-	if (!e) {
+	if (!e)
+	{
 		DEBUG("No packet to set timeout for\n");
 		DSR_READ_UNLOCK(&send_buf.lock);
 		return;
@@ -109,7 +111,7 @@ void NSCLASS send_buf_timeout(unsigned long data)
 }
 
 static struct send_buf_entry *send_buf_entry_create(struct dsr_pkt *dp,
-						    xmit_fct_t okfn)
+													xmit_fct_t okfn)
 {
 	struct send_buf_entry *e;
 
@@ -143,27 +145,31 @@ int NSCLASS send_buf_enqueue_packet(struct dsr_pkt *dp, xmit_fct_t okfn)
 
 	res = tbl_add_tail(&send_buf, &e->l);
 
-	if (res < 0) {
+	if (res < 0)
+	{
 		struct send_buf_entry *f;
 
 		DEBUG("buffer full, removing first\n");
 		f = (struct send_buf_entry *)tbl_detach_first(&send_buf);
 
-		if (f) {
+		if (f)
+		{
 			dsr_pkt_free(f->dp);
 			FREE(f);
 		}
 
 		res = tbl_add_tail(&send_buf, &e->l);
 
-		if (res < 0) {
+		if (res < 0)
+		{
 			DEBUG("Could not buffer packet\n");
 			FREE(e);
 			return -1;
 		}
 	}
 
-	if (empty) {
+	if (empty)
+	{
 		gettime(&expires);
 		timeval_add_usecs(&expires, ConfValToUsecs(SendBufferTimeout));
 		set_timer(&send_buf_timer, &expires);
@@ -177,18 +183,20 @@ int NSCLASS send_buf_set_verdict(int verdict, struct in_addr dst)
 	struct send_buf_entry *e;
 	int pkts = 0;
 
-	switch (verdict) {
+	switch (verdict)
+	{
 	case SEND_BUF_DROP:
 
 		while ((e =
-			(struct send_buf_entry *)tbl_find_detach(&send_buf,
-								 &dst,
-								 crit_addr))) {
+					(struct send_buf_entry *)tbl_find_detach(&send_buf,
+															 &dst,
+															 crit_addr)))
+		{
 			/* Only send one ICMP message */
 #ifdef __KERNEL__
 			if (pkts == 0)
 				icmp_send(e->dp->skb, ICMP_DEST_UNREACH,
-					  ICMP_HOST_UNREACH, 0);
+						  ICMP_HOST_UNREACH, 0);
 #endif
 			dsr_pkt_free(e->dp);
 			FREE(e);
@@ -196,31 +204,37 @@ int NSCLASS send_buf_set_verdict(int verdict, struct in_addr dst)
 		}
 		DEBUG("Dropped %d queued pkts for %s\n", pkts, print_ip(dst));
 		break;
-	case SEND_BUF_SEND:
+	case SEND_BUF_SEND: // 发送 send_buf 中到 dst 的所有表项
 
 		while ((e =
-			(struct send_buf_entry *)tbl_find_detach(&send_buf,
-								 &dst,
-								 crit_addr))) {
+					(struct send_buf_entry *)tbl_find_detach(&send_buf,
+															 &dst,
+															 crit_addr)))
+		{
 			DEBUG("Send packet\n");
 			/* Get source route */
 			e->dp->srt = dsr_rtc_find(e->dp->src, e->dp->dst);
 
-			if (e->dp->srt) {
+			if (e->dp->srt)
+			{
 
-				if (dsr_srt_add(e->dp) < 0) {
+				if (dsr_srt_add(e->dp) < 0)
+				{
 					DEBUG("Could not add source route\n");
 					dsr_pkt_free(e->dp);
-				} else
-					/* Send packet */
+				}
+				else
+				/* Send packet */
 #ifdef NS2
-					(this->*e->okfn) (e->dp);
+					(this->*e->okfn)(e->dp);
 #else
 					e->okfn(e->dp);
 #endif
-			} else {
+			}
+			else
+			{
 				DEBUG("No source route found for %s!\n",
-				      print_ip(dst));
+					  print_ip(dst));
 
 				dsr_pkt_free(e->dp);
 			}
@@ -230,7 +244,7 @@ int NSCLASS send_buf_set_verdict(int verdict, struct in_addr dst)
 		DEBUG("Sent %d queued packets to %s\n", pkts, print_ip(dst));
 
 		/*      if (pkts == 0) */
-/* 			DEBUG("No packets for dest %s\n", print_ip(dst)); */
+		/* 			DEBUG("No packets for dest %s\n", print_ip(dst)); */
 		break;
 	}
 	return pkts;
@@ -242,7 +256,8 @@ static inline int send_buf_flush(struct tbl *t)
 	int pkts = 0;
 	/* Flush send buffer */
 	while ((e =
-		(struct send_buf_entry *)tbl_find_detach(t, NULL, crit_none))) {
+				(struct send_buf_entry *)tbl_find_detach(t, NULL, crit_none)))
+	{
 		dsr_pkt_free(e->dp);
 		FREE(e);
 		pkts++;
@@ -263,18 +278,20 @@ static int send_buf_print(struct tbl *t, char *buffer)
 
 	DSR_READ_LOCK(&t->lock);
 
-	list_for_each(p, &t->head) {
+	list_for_each(p, &t->head)
+	{
 		struct send_buf_entry *e = (struct send_buf_entry *)p;
 
 		if (e && e->dp)
 			len += sprintf(buffer + len, "  %-15s %-8lu\n",
-				       print_ip(e->dp->dst),
-				       timeval_diff(&now, &e->qtime) / 1000000);
+						   print_ip(e->dp->dst),
+						   timeval_diff(&now, &e->qtime) / 1000000);
 	}
 
 	len += sprintf(buffer + len,
-		       "\nQueue length      : %u\n"
-		       "Queue max. length : %u\n", t->len, t->max_len);
+				   "\nQueue length      : %u\n"
+				   "Queue max. length : %u\n",
+				   t->len, t->max_len);
 
 	DSR_READ_UNLOCK(&t->lock);
 
@@ -298,7 +315,7 @@ send_buf_get_info(char *buffer, char **start, off_t offset, int length)
 	return len;
 }
 
-#endif				/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
 int __init NSCLASS send_buf_init(void)
 {
@@ -308,7 +325,8 @@ int __init NSCLASS send_buf_init(void)
 	proc = proc_net_create(SEND_BUF_PROC_FS_NAME, 0, send_buf_get_info);
 	if (proc)
 		proc->owner = THIS_MODULE;
-	else {
+	else
+	{
 		printk(KERN_ERR "send_buf: failed to create proc entry\n");
 		return -1;
 	}

@@ -234,6 +234,7 @@ int NSCLASS dsr_opt_recv(struct dsr_pkt *dp)
 	dsr_len = dsr_pkt_opts_len(dp);
 
 	l = DSR_OPT_HDR_LEN;
+	// 提取 dsr_opt 可选报文段，并转换数据结构
 	dopt = DSR_GET_OPT(dp->dh.opth);
 
 	//DEBUG("Parsing DSR packet l=%d dsr_len=%d\n", l, dsr_len);
