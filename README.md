@@ -1,3 +1,9 @@
-# Source Code Analysis Of Dynamic Source Routing Protocol
+# Analysis Of Dynamic Source Routing Protocol
 
-this repository is 
+该仓库记载了一个路由协议 DSR 的分析过程：
+
+分析人： 曾乙峰 卢睿博 章浩磊
+
+目录结构： 
+    /doc 分析的文档中间件
+    /src DSR 开源源代码及相关注释
