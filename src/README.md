@@ -1,3 +1,23 @@
+## DSR 协议代码注释
+
+在代码注释过程中主要研究了以下函数 和 数据结构，并进行了相应的注释
+
+`dsr_rreq_route_discovery` ： 路由查找的起点，发起函数
+
+ `dsr_rreq_opt_recv`处理和转发 RREQ 报文
+
+`dsr_rrep_send`  : 发送请求回复 RREP 报文
+
+ `dsr_rrep_opt_recv` 处理和转发回应报文
+
+`dsr_rerr_send` 错误报文发送函数
+
+`dsr_ack_send` **&** `dsr_ack_opt_recv`  : ack 确认报文
+
+`dsr_ack_req_send` **&** `dsr_ack_req_opt_recv` ： ack_req ack请求报文
+
+
+
 DSR-UU is a DSR implementation that runs in Linux (kernel 2.4/2.6) and
 in the ns-2 network simulator.
 

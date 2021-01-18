@@ -1,17 +1,18 @@
 # 卢睿博的分析记录
 
-| 英文缩写 | 中文全称                          |
-| -------- | --------------------------------- |
-| RREQ     | 路由发现请求消息(routing request) |
-| RREP     | 路由请求回应消息(routing reply)   |
-| RERR     | 路由错误(routing error reply)   |
-| ACK      | 流模式确认消息                   |
+| 英文缩写 | 中文全称                          |  |
+| -------- | --------------------------------- | -------- |
+| RREQ     | 路由发现请求消息(routing request) |  |
+| RREP     | 路由请求回应消息(routing reply)   |  |
+| RERR     | 路由错误(routing error reply)   |  |
+| ACK      | 确认消息                   |  |
+| ACK_REQ | 请求确认消息 |  |
 
 ### 分析函数过程
 
 `dsr_rreq_route_discovery` **&** `dsr_rreq_opt_recv` 发送和处理请求报文
 `dsr_rrep_send` **&** `dsr_rrep_opt_recv` 发送和处理回应报文
-`dsr_rerr_send` 错误处理
+`dsr_rerr_send` 错误报文发送函数
 
 ### Search Diary
 
